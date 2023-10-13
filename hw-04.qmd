@@ -1,0 +1,44 @@
+---
+title: "HW 04"
+author: "INSERT YOUR NAME HERE"
+format: html
+toc: true
+---
+
+```{r load-packages, message = FALSE}
+library(tidyverse)
+# add any other packages you use here
+```
+
+
+## 1 - Degrees over time 
+
+```{r}
+#| label: label-me-1
+
+```
+
+2.  **That's what our guest said.**
+
+
+
+3.  **Country populations.**
+
+```{r}
+#| label: label-me-3
+
+```
+
+4.  **Battle of the newspapers.**
+
+```{r}
+#| label: label-me-4
+
+```
+
+5.  **Brexit.**
+
+
+```{r label-me-5}
+
+```
