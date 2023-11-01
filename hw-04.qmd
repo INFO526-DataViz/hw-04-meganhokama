@@ -18,27 +18,24 @@ library(tidyverse)
 
 ```
 
-2.  **That's what our guest said.**
 
+2.  **Country populations.**
 
+```{r}
+#| label: label-me-2
 
-3.  **Country populations.**
+```
+
+3.  **Battle of the newspapers.**
 
 ```{r}
 #| label: label-me-3
 
 ```
 
-4.  **Battle of the newspapers.**
-
-```{r}
-#| label: label-me-4
-
-```
-
-5.  **Brexit.**
+4.  **Brexit.**
 
 
-```{r label-me-5}
+```{r label-me-4}
 
 ```

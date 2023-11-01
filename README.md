@@ -25,7 +25,7 @@ Data sources:
     and 2015. The dataset you will use is in your `data/` folder and
     it’s called `BA_degrees.csv`.
 
-    -   Load the two dataset using `read_csv()`.
+    -   Load the dataset using `read_csv()`.
 
     -   Consider the Bachelor’s degrees awarded in 2015. If you wanted
         to visualize the relative proportion of these different degree
