@@ -1,6 +1,6 @@
 ---
 title: "HW 04"
-author: "INSERT YOUR NAME HERE"
+author: "Megan Hokama"
 format: html
 toc: true
 ---
@@ -8,21 +8,152 @@ toc: true
 ```{r load-packages, message = FALSE}
 library(tidyverse)
 # add any other packages you use here
+
+if(!require(pacman))
+  install.packages("pacman")
+
+pacman::p_load(
+  tidyverse,
+  dplyr, 
+  viridis,
+  scales,
+  ggplot2,
+  RColorBrewer,
+  forcats,
+  janitor,
+  here
+)
+
 ```
 
 
 ## 1 - Degrees over time 
 
 ```{r}
-#| label: label-me-1
+#| label: loading dataset
+
+ba <- read_csv("data/BA_degrees.csv")
+
+ba |>
+  glimpse()
+
+
+```
+Explanation: This side-by-side bar plot allows you to compare the number of Bachelor's degrees awarded in different degree areas in 2015, with each group of bars representing a specific degree area. The proportional difference in lengths between the bars is easy to interpret, providing a clear representation of the relative proportions. Since there are a significant amount of fields, it would be difficult to see the different types on a pie chart in comparsion to the side by side bar plot. 
+
+```{r}
+#| label: make stacked bar plot
+# Filter the dataset for the year 2015
+ba_2015 <- subset(ba, year == 2015)
+
+#Create side by side bar plot
+ba_2015 <- ba|>
+  filter(year == 2015)
+
+ggplot(ba_2015, aes(x = count, y = field))+
+  geom_col(fill = "orange")+
+  scale_x_continuous(labels = comma)+
+  labs(title = 'Bachelor’s Degrees Awarded in 2015', 
+       x = 'Degree Amount',
+       y = 'Field of Degree')+
+  theme(plot.title = element_text(size = 20),
+        axis.text = element_text(size = 6))
 
 ```
 
+```{r}
+#| label: Time series plot
+
+# Filter the dataset for the degree field "Education"
+ba_educ <- ba|>
+  filter(field == "Education")
+
+# Create a time series plot with a straight line fit
+ggplot(ba_educ, aes(x = year, y = perc)) +
+  geom_line() +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +  # Add a linear fit
+  labs(title = 'Proportion of Education Degrees Over Time', 
+       x = 'Year', 
+       y = 'Proportion (%)') +
+  theme_minimal()
+
+
+```
+Explanation: Based on the time series plot, the proportion of individuals who received an Education degree decreased across time. The straight line fit clearly visualizes the sharp decline from 1970 to 2015.
+
+```{r}
+#| label: Top degree plot
+# Function to calculate the coefficient of variation
+coef_var <- function(x) {
+  sd(x)/mean(x)
+}
+
+# Calculate the coefficient of variation for each field
+variation <- ba |>
+  group_by(field) |>
+  summarize(coef_var = coef_var(perc))
+
+# Identify the fields that changed the most
+top_changed_fields <- variation |>
+  top_n(5, wt = coef_var)  # Select top 5 fields with the highest coefficient of variation
+
+# Filter the dataset for the identified fields
+highlighted_data <- ba |>
+  filter(field %in% top_changed_fields$field)
+
+# Create a color palette for the highlighted fields
+color_palette <- brewer.pal(length(top_changed_fields$field), "Set1")
+
+# Create a time series plot with highlighted and gray lines
+ggplot() +
+  geom_line(data = other_data, aes(x = year, y = perc, group = field), color = "gray", alpha = 1) +
+  geom_line(data = highlighted_data, aes(x = year, y = perc, group = field, color = field), size = 1.5) +
+  scale_color_manual(values = color_palette) +
+  labs(title = 'Proportions of All Degrees Over Time',
+       x = 'Year',
+       y = 'Proportion (%)') +
+  theme_minimal()+
+  coord_cartesian(ylim = c(0,.025))
+
+```
+Explanation: I defined "changed the most" as the ones with the highest variability or standard deviation in their proportions over the years.
+
+```{r}
+#|label: 
+
+ba_lumped <- ba %>%
+  mutate(field = fct_other(as.character(field), keep = top_changed_fields$field))
+
+# Create a time series plot with lumped "Other" field and highlighted fields
+ggplot(ba_lumped, aes(x = year, y = perc, group = field, color = field)) +
+  geom_line(size = 1) +
+  scale_color_manual(values = c(color_palette, "gray"), guide = FALSE) +
+  labs(title = 'Proportions of All Degrees Over Time',
+       x = 'Year',
+       y = 'Proportion (%)') +
+  theme_minimal()+
+  coord_cartesian(ylim = c(0,.025))
+```
+Explanation: According to the time series plot, parks & recreation degrees have showed a greater difference over time, while library science degrees showed decrease in change. 
 
 2.  **Country populations.**
 
 ```{r}
-#| label: label-me-2
+#| label: Load data
+
+country <- read.csv(here("data","country-pop.csv"), skip=4)|>
+  janitor::clean_names()
+
+country |>
+  glimpse()
+
+top10 <- country[, c("country_name", "x2020")]|>
+  arrange(desc(x2020)) |>
+  head(55)
+
+top10 |> 
+  glimpse()
+
 
 ```
 
