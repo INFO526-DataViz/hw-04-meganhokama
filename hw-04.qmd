@@ -95,6 +95,9 @@ coef_var <- function(x) {
   sd(x)/mean(x)
 }
 
+other_data <- ba %>%
+  filter(field == "Other")
+
 # Calculate the coefficient of variation for each field
 variation <- ba |>
   group_by(field) |>
