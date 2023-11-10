@@ -21,13 +21,17 @@ pacman::p_load(
   RColorBrewer,
   forcats,
   janitor,
-  here
+  here,
+  gganimate,
+  gapminder,
+  gifski,
+  tidytext,
+  patchwork
 )
 
 ```
 
-
-## 1 - Degrees over time 
+## 1 - Degrees over time
 
 ```{r}
 #| label: loading dataset
@@ -39,7 +43,8 @@ ba |>
 
 
 ```
-Explanation: This side-by-side bar plot allows you to compare the number of Bachelor's degrees awarded in different degree areas in 2015, with each group of bars representing a specific degree area. The proportional difference in lengths between the bars is easy to interpret, providing a clear representation of the relative proportions. Since there are a significant amount of fields, it would be difficult to see the different types on a pie chart in comparsion to the side by side bar plot. 
+
+Explanation: This side-by-side bar plot allows you to compare the number of Bachelor's degrees awarded in different degree areas in 2015, with each group of bars representing a specific degree area. The proportional difference in lengths between the bars is easy to interpret, providing a clear representation of the relative proportions. Since there are a significant amount of fields, it would be difficult to see the different types on a pie chart in comparsion to the side by side bar plot.
 
 ```{r}
 #| label: make stacked bar plot
@@ -79,6 +84,7 @@ ggplot(ba_educ, aes(x = year, y = perc)) +
 
 
 ```
+
 Explanation: Based on the time series plot, the proportion of individuals who received an Education degree decreased across time. The straight line fit clearly visualizes the sharp decline from 1970 to 2015.
 
 ```{r}
@@ -116,10 +122,11 @@ ggplot() +
   coord_cartesian(ylim = c(0,.025))
 
 ```
+
 Explanation: I defined "changed the most" as the ones with the highest variability or standard deviation in their proportions over the years.
 
 ```{r}
-#|label: 
+#|label: Time series with lumped "other" field
 
 ba_lumped <- ba %>%
   mutate(field = fct_other(as.character(field), keep = top_changed_fields$field))
@@ -134,12 +141,13 @@ ggplot(ba_lumped, aes(x = year, y = perc, group = field, color = field)) +
   theme_minimal()+
   coord_cartesian(ylim = c(0,.025))
 ```
-Explanation: According to the time series plot, parks & recreation degrees have showed a greater difference over time, while library science degrees showed decrease in change. 
+
+Explanation: According to the time series plot, parks & recreation degrees have showed a greater difference over time, while library science degrees showed decrease in change.
 
 2.  **Country populations.**
 
 ```{r}
-#| label: Load data
+#| label: Race Bar Chart Animation
 
 country <- read.csv(here("data","country-pop.csv"), skip=4)|>
   janitor::clean_names()
@@ -151,21 +159,202 @@ top10 <- country[, c("country_name", "x2020")]|>
   arrange(desc(x2020)) |>
   head(55)
 
-top10 |> 
+top10 |>
   glimpse()
 
+top10 <- country|>  
+  filter(country_name %in% c("China","India", "United States", "Indonesia",
+                             "Pakistan", "Brazil", "Nigeria", "Bangladesh",
+                             "Russian Federation", "Mexico"))
 
+top10year <- top10|>
+  pivot_longer(cols = 5:65, names_to = "year",
+               values_to = "population")|>
+  select("country_name", "population", "year")|>
+  mutate(year = substring(year, 2))|>
+  mutate(year = as.numeric(year))|>
+  group_by(year)|>
+  arrange(year, -population)|>
+  mutate(rank = 1:n())
+
+top10year |>
+  glimpse()
+
+staticplot <- ggplot(top10year, aes(rank, group = country_name,
+fill = as.factor(country_name), color = as.factor(country_name))) +
+  geom_tile(aes(y = population/2,
+                height = population,
+                width = 0.9), alpha = 0.8, color = NA) +
+  geom_text(aes(y = 0, label = paste(country_name, " ")), vjust = 0.2, hjust = 1) +
+  geom_text(aes(y = population, label = population, hjust = 0)) +
+  coord_flip(clip = "off", expand = FALSE) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_reverse() +
+  guides(color = "none", fill = "none") +
+  theme(axis.line = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "none",
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_line(linewidth = 0.1, color = "grey"),
+        panel.grid.minor.x = element_line(linewidth = 0.1, color = "grey"),
+        plot.title = element_text(size = 25, hjust = 0.5, face = "bold", colour = "black", vjust = -1),
+        plot.subtitle = element_text(size = 15, hjust = 0.5, face = "italic", color = "black"),
+        plot.caption = element_text(size = 8, hjust = 0.5, face = "italic", color = "black"),
+        plot.background = element_blank(),
+        plot.margin = margin(2, 2, 10, 4, "cm"))
+
+anim <- staticplot + transition_states(year, transition_length = 4, state_length = 1) +
+  view_follow(fixed_x = TRUE)  +
+  labs(title = 'Population per Year with Top 10 Countries : {closest_state}',
+       caption  = "Population | Data Source: The World Bank")
+
+animate(anim, 200, fps = 20,  width = 1200, height = 1000,
+        renderer = gifski_renderer("gganim.gif"))
 ```
+Explanation: In order to create the racing bar chart, I referenced https://www.r-bloggers.com/2020/01/how-to-create-bar-race-animation-charts-in-r/. This helped me develop a gif that shows the top 10 countries populations over time. China and India indicate a large population increase over time. 
 
 3.  **Battle of the newspapers.**
 
 ```{r}
-#| label: label-me-3
+#| label: Newspaper
+
+#Load Data
+charl <- read.csv(here("data","charlotte_observer_2019.csv"))
+
+balt <- read.csv(here("data","baltimore_sun_2019.csv"))
+
+#Combine headlines
+all_headlines <- bind_rows(
+  mutate(charl, newspaper = "Charlotte Observer"),
+  mutate(balt, newspaper = "Baltimore Sun")
+) %>%
+  select(newspaper, title)
+
+# Tokenize the words and remove stop words
+all_words <- all_headlines %>%
+  unnest_tokens(word, title) %>%
+  anti_join(stop_words)
+
+# Get the 20 most common words for each newspaper
+common_words_charlotte <- all_words %>%
+  filter(newspaper == "Charlotte Observer") %>%
+  count(word, sort = TRUE) %>%
+  head(20)
+
+common_words_baltimore <- all_words %>%
+  filter(newspaper == "Baltimore Sun") %>%
+  count(word, sort = TRUE) %>%
+  head(20)
+
+# Print the results
+print("Common words in Charlotte Observer headlines:")
+print(common_words_charlotte)
+
+print("Common words in Baltimore Sun headlines:")
+print(common_words_baltimore)
 
 ```
 
-4.  **Brexit.**
+Explanation: The words most frequently exhibited by Baltimore or Charlotte indicates common themes found in each region. For Charlotte, common themes include the location and sport's teams such as charlotte, carolina, hornets, panthers. However, Baltimore showed more themes in services and politics such as police, services, school, and trump. One common theme is that Baltimore also had a common theme of naming the location, maryland, baltimore, and md as well. 
 
+```{r}
+#| label: Bar chart for common words
+
+# Add the 'newspaper' column back to common_words_charlotte and common_words_baltimore
+common_words_charlotte <- common_words_charlotte %>%
+  mutate(newspaper = "Charlotte Observer")
+
+common_words_baltimore <- common_words_baltimore %>%
+  mutate(newspaper = "Baltimore Sun")
+
+# Create bar charts with rotated x-axis labels
+plot_charlotte <- common_words_charlotte %>%
+  ggplot(aes(x = fct_reorder(word, n), y = n, fill = factor(newspaper))) +
+  geom_col(fill = "orange") +
+  labs(title = "Top 20 Common Words in Charlotte Observer Headlines",
+       x = "Word",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8),  # Set the size parameter as needed
+        plot.title = element_text(size = 8))  # Set the title size as needed
+
+plot_baltimore <- common_words_baltimore %>%
+  ggplot(aes(x = fct_reorder(word, n), y = n, fill = factor(newspaper))) +
+  geom_col(fill="skyblue") +
+  labs(title = "Top 20 Common Words in Baltimore Sun Headlines",
+       x = "Word",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8),  # Set the size parameter as needed
+        plot.title = element_text(size = 8))  # Set the title size as needed
+
+# Display the plots side by side
+plot_charlotte + plot_baltimore + plot_layout(ncol = 2)
+
+```
+```{r}
+#|label: binding and faceting
+# Add a newspaper column to identify the source
+charl$newspaper <- "Charlotte Observer"
+balt$newspaper <- "Baltimore Sun"
+
+# Identify common variables
+common_vars <- intersect(colnames(charl), colnames(balt))
+
+# Select only common variables from each dataset
+charl_selected <- charl %>% select(all_of(common_vars))
+balt_selected <- balt %>% select(all_of(common_vars))
+
+# Function to find common words
+find_common_words <- function(data) {
+  data %>%
+    select(title) %>%
+    unnest_tokens(word, title) %>%
+    anti_join(stop_words) %>%
+    count(word, sort = TRUE) %>%
+    slice_head(n = 10)
+}
+
+# Find common words for each newspaper
+common_words_charlotte <- find_common_words(charl_selected)
+common_words_baltimore <- find_common_words(balt_selected)
+
+# Identify the top 10 words for each newspaper
+top10_charlotte <- common_words_charlotte %>% slice_head(n = 10)
+top10_baltimore <- common_words_baltimore %>% slice_head(n = 10)
+
+# Combine the top 10 words for each newspaper
+top10_combined_data <- bind_rows(
+  mutate(top10_charlotte, newspaper = "Charlotte Observer"),
+  mutate(top10_baltimore, newspaper = "Baltimore Sun")
+)
+
+# Create faceted bar plots with only the top 10 words
+facet_bar_plots <- top10_combined_data %>%
+  ggplot(aes(x = fct_reorder(word, n), y = n, fill = word)) +
+  geom_col() +
+  facet_wrap(~ newspaper, scales = "free_y") +
+  labs(title = "Top 10 Common Words in Headlines",
+       x = "Word",
+       y = "Count",
+       fill = "Word") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8)  # Adjust size as needed
+  ) +
+  guides(fill = "none")  # Remove the legend
+
+print(facet_bar_plots)
+
+```
+4.  **Brexit.**
 
 ```{r label-me-4}
 
