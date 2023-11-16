@@ -1,7 +1,7 @@
 ---
 name: 'HW 4 Grading '
 about: 'Feedback '
-title: 'Homework 2 Feedback '
+title: 'Homework 4 Feedback '
 labels: ''
 assignees: ''
 
